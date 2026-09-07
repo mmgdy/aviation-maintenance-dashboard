@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { internalAction, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { createAccount } from "@convex-dev/auth/server";
-import { Password } from "@convex-dev/auth/providers/Password";
 
 const ADMIN_EMAIL = "admin@admin.local";
 const ADMIN_PASSWORD = "UR2qjm4qYJ7n5AHJ";
@@ -10,10 +9,9 @@ const ADMIN_PASSWORD = "UR2qjm4qYJ7n5AHJ";
 export const seedAdmin = internalAction({
   args: {},
   handler: async (ctx): Promise<string> => {
-    const provider = Password({});
     try {
       await createAccount(ctx, {
-        provider,
+        provider: "password",
         account: { id: ADMIN_EMAIL, secret: ADMIN_PASSWORD },
         profile: { email: ADMIN_EMAIL },
         shouldLinkViaEmail: false,
