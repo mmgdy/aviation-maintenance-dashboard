@@ -1,37 +1,26 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
+import { createAccount, Password } from "@convex-dev/auth/server";
 
 const ADMIN_EMAIL = "admin@admin.local";
 const ADMIN_PASSWORD = "UR2qjm4qYJ7n5AHJ";
 
-// Run once after your first deploy:
-//
-//   npx convex run adminSeed:seedAdmin
-//
-// Creates (or upgrades) a super_admin account you can log in with
-// immediately: admin@admin.local / admin
-//
-// "admin" is intentionally weak and only meant to get you into the app
-// once — change the password (or delete this account and create a real
-// one) right after your first login.
 export const seedAdmin = internalAction({
   args: {},
   handler: async (ctx): Promise<string> => {
+    const provider = Password({});
     try {
-      await ctx.runAction(api.auth.signIn, {
-        provider: "password",
-        params: {
-          flow: "signUp",
-          email: ADMIN_EMAIL,
-          password: ADMIN_PASSWORD,
-        },
+      await createAccount(ctx, {
+        provider,
+        account: { id: ADMIN_EMAIL, secret: ADMIN_PASSWORD },
+        profile: { email: ADMIN_EMAIL },
+        shouldLinkViaEmail: false,
+        shouldLinkViaPhone: false,
       });
     } catch (err) {
-      // If the account already exists, that's fine — we just need to make
-      // sure it (still) has the super_admin role, handled below.
       const message = err instanceof Error ? err.message : String(err);
-      if (!message.toLowerCase().includes("exist")) {
+      if (!message.toLowerCase().includes("already exists")) {
         throw err;
       }
     }
