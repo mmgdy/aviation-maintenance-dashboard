@@ -22,8 +22,7 @@ export const seedAdmin = internalAction({
       await ctx.runAction(api.auth.signIn, {
         provider: "password",
         params: {
-          flow: "signUp",
-          email: ADMIN_EMAIL,
+            email: ADMIN_EMAIL,
           password: ADMIN_PASSWORD,
         },
       });
