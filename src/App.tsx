@@ -5,7 +5,6 @@ import LocaleWrapper from "./components/providers/locale-wrapper.tsx";
 import AppLayout from "./components/layout/app-layout.tsx";
 import { SAVED_OR_DEFAULT_LOCALE, setLocaleInPath } from "./i18n.ts";
 import "./i18n.ts";
-import AuthCallback from "./pages/auth/Callback.tsx";
 import DashboardPage from "./pages/dashboard/page.tsx";
 import RegionsPage from "./pages/regions/page.tsx";
 import SiteDetailPage from "./pages/regions/site-detail-page.tsx";
@@ -38,7 +37,6 @@ export default function App() {
             <Route path="/" element={<RootRedirect />} />
 
             {/* Non-localized routes (auth, webhooks, etc.) */}
-            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* All localized routes under /:lng */}
             <Route

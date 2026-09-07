@@ -1,4 +1,5 @@
 import { ConvexError } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import type { QueryCtx } from "../_generated/server.js";
 import type { Doc } from "../_generated/dataModel.d.ts";
 
@@ -9,17 +10,14 @@ export type MyAccess = {
 
 // Resolves the current authenticated user's row + role record (if granted).
 export async function resolveMyAccess(ctx: QueryCtx): Promise<MyAccess> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
     throw new ConvexError({
       code: "UNAUTHENTICATED",
       message: "User not logged in",
     });
   }
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-    .unique();
+  const user = await ctx.db.get("users", userId);
   if (!user) {
     throw new ConvexError({
       code: "NOT_FOUND",
@@ -28,7 +26,7 @@ export async function resolveMyAccess(ctx: QueryCtx): Promise<MyAccess> {
   }
   const role = await ctx.db
     .query("roles")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
+    .withIndex("by_user", (q) => q.eq("userId", userId))
     .unique();
   return { user, role };
 }

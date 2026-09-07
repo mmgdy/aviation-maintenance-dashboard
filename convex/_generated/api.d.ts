@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as adminSeed from "../adminSeed.js";
+import type * as auth from "../auth.js";
+import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
 import type * as regions from "../regions.js";
 import type * as roles from "../roles.js";
@@ -21,6 +24,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminSeed: typeof adminSeed;
+  auth: typeof auth;
+  http: typeof http;
   "lib/access": typeof lib_access;
   regions: typeof regions;
   roles: typeof roles;

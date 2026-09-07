@@ -1,99 +1,68 @@
-import { ConvexError } from "convex/values";
-import { mutation, query, type MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel.d.ts";
-
-// Grants a role to a brand new user: the very first user ever to sign in
-// becomes the Super Admin. Otherwise, consume a pending invite matching
-// their email (case-insensitive), if any.
-async function bootstrapRoleForNewUser(
-  ctx: MutationCtx,
-  userId: Id<"users">,
-  email: string | undefined,
-): Promise<void> {
-  const anyRole = await ctx.db.query("roles").first();
-  const now = new Date().toISOString();
-
-  if (anyRole === null) {
-    await ctx.db.insert("roles", {
-      userId,
-      role: "super_admin",
-      createdAt: now,
-    });
-    return;
-  }
-
-  if (!email) return;
-
-  const invite = await ctx.db
-    .query("invitedUsers")
-    .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
-    .first();
-
-  if (!invite || invite.status === "activated") return;
-
-  await ctx.db.insert("roles", {
-    userId,
-    role: invite.role,
-    department: invite.department,
-    phone: invite.phone,
-    siteId: invite.siteId,
-    createdAt: now,
-  });
-  await ctx.db.patch("invitedUsers", invite._id, {
-    status: "activated",
-    activatedUserId: userId,
-  });
-}
-
-export const updateCurrentUser = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({
-        code: "UNAUTHENTICATED",
-        message: "User not logged in",
-      });
-    }
-
-    // Check if we've already stored this identity before.
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    if (existingUser !== null) {
-      return existingUser._id;
-    }
-
-    // If it's a new identity, create a new User and assign a role.
-    const userId = await ctx.db.insert("users", {
-      name: identity.name,
-      email: identity.email,
-      tokenIdentifier: identity.tokenIdentifier,
-    });
-    await bootstrapRoleForNewUser(ctx, userId, identity.email);
-    return userId;
-  },
-});
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { mutation, query } from "./_generated/server";
 
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new ConvexError({
-        code: "UNAUTHENTICATED",
-        message: "Called getCurrentUser without authentication present",
-      });
-    }
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    return await ctx.db.get("users", userId);
+  },
+});
+
+// Idempotent — safe to call every time a user signs in. Grants super_admin
+// to the very first person ever to authenticate against this deployment,
+// or consumes a matching pending invite by email. Otherwise leaves the
+// user in the "pending" state (authenticated, no role yet) until a Super
+// Admin invites them.
+export const ensureAccess = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const existingRole = await ctx.db
+      .query("roles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
-    return user;
+    if (existingRole) return existingRole;
+
+    const now = new Date().toISOString();
+    const anyRole = await ctx.db.query("roles").first();
+
+    if (anyRole === null) {
+      const roleId = await ctx.db.insert("roles", {
+        userId,
+        role: "super_admin",
+        createdAt: now,
+      });
+      return await ctx.db.get("roles", roleId);
+    }
+
+    const user = await ctx.db.get("users", userId);
+    const email = user?.email?.toLowerCase();
+    if (email) {
+      const invite = await ctx.db
+        .query("invitedUsers")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .first();
+      if (invite && invite.status === "pending") {
+        const roleId = await ctx.db.insert("roles", {
+          userId,
+          role: invite.role,
+          department: invite.department,
+          phone: invite.phone,
+          siteId: invite.siteId,
+          createdAt: now,
+        });
+        await ctx.db.patch("invitedUsers", invite._id, {
+          status: "activated",
+          activatedUserId: userId,
+        });
+        return await ctx.db.get("roles", roleId);
+      }
+    }
+
+    return null;
   },
 });

@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export const roleValidator = v.union(
   v.literal("super_admin"),
@@ -14,11 +15,9 @@ export const siteTypeValidator = v.union(
 );
 
 export default defineSchema({
-  users: defineTable({
-    tokenIdentifier: v.string(),
-    name: v.optional(v.string()),
-    email: v.optional(v.string()),
-  }).index("by_token", ["tokenIdentifier"]),
+  // Provides `users`, `authAccounts`, `authSessions`, etc. — including a
+  // `users` table indexed by "email" — managed by Convex Auth.
+  ...authTables,
 
   // One role record per user. Absence of a record means the user is
   // authenticated but has not been granted access yet (pending invite).

@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator.tsx";
 import LocaleSwitcher from "@/components/ui/locale-switcher.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar.tsx";
-import { SignInButton } from "@/components/ui/signin.tsx";
+import { LoginForm } from "@/components/auth/login-form.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty.tsx";
 import {
@@ -44,8 +44,10 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
-import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated, useMutation } from "convex/react";
 import { useAuth } from "@/hooks/use-auth.ts";
+import { api } from "@/convex/_generated/api.js";
+import { useEffect } from "react";
 import type { ComponentType } from "react";
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
 
@@ -131,11 +133,11 @@ function AppSidebar({ role }: { role: Doc<"roles">["role"] }) {
               className="flex w-full items-center gap-2 rounded-md p-2 text-left hover:bg-sidebar-accent cursor-pointer"
             >
               <Avatar size="sm">
-                <AvatarFallback>{getInitials(user?.profile.name)}</AvatarFallback>
+                <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
               </Avatar>
               <div className="flex min-w-0 flex-1 flex-col leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate text-sm font-medium">
-                  {user?.profile.name ?? user?.profile.email}
+                  {user?.name ?? user?.email}
                 </span>
                 <span className="truncate text-[11px] text-sidebar-foreground/60">
                   {t(`roles.${role}`)}
@@ -145,7 +147,7 @@ function AppSidebar({ role }: { role: Doc<"roles">["role"] }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-56">
-            <DropdownMenuLabel className="truncate">{user?.profile.email}</DropdownMenuLabel>
+            <DropdownMenuLabel className="truncate">{user?.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"
@@ -178,6 +180,13 @@ function AppTopbar() {
 function AuthenticatedLayout() {
   const access = useAccess();
   const { t } = useTranslation("common");
+  const ensureAccess = useMutation(api.users.ensureAccess);
+
+  // Idempotent bootstrap: grants super_admin to the first-ever user, or
+  // consumes a matching invite by email. Safe to call every mount.
+  useEffect(() => {
+    void ensureAccess();
+  }, [ensureAccess]);
 
   if (access.status === "loading") {
     return (
@@ -249,7 +258,7 @@ function SignInScreen() {
             {t("app.tagline")}
           </Badge>
         </div>
-        <SignInButton className="w-full cursor-pointer" size="lg" signInText={t("buttons.signIn")} />
+        <LoginForm />
       </div>
     </div>
   );
