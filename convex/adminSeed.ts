@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-import { createAccount, Password } from "@convex-dev/auth/server";
+import { createAccount } from "@convex-dev/auth/server";
+import { Password } from "@convex-dev/auth/providers/Password";
 
 const ADMIN_EMAIL = "admin@admin.local";
 const ADMIN_PASSWORD = "UR2qjm4qYJ7n5AHJ";
