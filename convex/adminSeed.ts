@@ -3,7 +3,7 @@ import { internalAction, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
 const ADMIN_EMAIL = "admin@admin.local";
-const ADMIN_PASSWORD = "admin";
+const ADMIN_PASSWORD = "UR2qjm4qYJ7n5AHJ";
 
 // Run once after your first deploy:
 //
@@ -22,7 +22,8 @@ export const seedAdmin = internalAction({
       await ctx.runAction(api.auth.signIn, {
         provider: "password",
         params: {
-            email: ADMIN_EMAIL,
+          flow: "signUp",
+          email: ADMIN_EMAIL,
           password: ADMIN_PASSWORD,
         },
       });
